@@ -2,12 +2,14 @@
 import { apps } from './apps.js';
 import { esc, toast, exportAll, importAll } from './core.js';
 
-const HUB_COLOR = '#4f46e5';
+const HUB_COLOR = ['#6366f1', '#a855f7'];
+const calm = matchMedia('(prefers-reduced-motion: reduce)');
 const main = document.getElementById('main');
 const titleEl = document.getElementById('title');
 const backEl = document.getElementById('back');
 const themeMeta = document.querySelector('meta[name="theme-color"]');
 let lastHash = null;
+let lastDepth = 0;
 
 const ctx = {
   go: (hash) => (location.hash === hash ? route() : (location.hash = hash)),
@@ -15,35 +17,53 @@ const ctx = {
   toast,
 };
 
-function setAccent(color) {
-  document.documentElement.style.setProperty('--accent', color);
+function setAccent([color, color2 = color]) {
+  const st = document.documentElement.style;
+  st.setProperty('--accent', color);
+  st.setProperty('--accent-2', color2);
   themeMeta.setAttribute('content', color);
 }
 
 function setHeader(title, back) {
+  if (titleEl.textContent !== title && !calm.matches) {
+    titleEl.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 280, easing: 'ease-out' });
+  }
   titleEl.textContent = title;
   backEl.hidden = !back;
   if (back) backEl.href = back;
+}
+
+// Fa comparire gli elementi della pagina uno dopo l'altro.
+function stagger(view) {
+  let i = 0;
+  view.querySelectorAll(':scope > *, :scope > .list > *, :scope > .grid > *').forEach((el) => {
+    if (el.matches('.list, .grid')) return;
+    el.classList.add('rise');
+    el.style.setProperty('--i', Math.min(i++, 10));
+  });
 }
 
 const isNative = () => !!window.Capacitor?.isNativePlatform?.();
 
 function route() {
   // Cambiando pagina (anche col tasto "indietro" di Android) chiudi i pannelli aperti.
-  document.querySelectorAll('dialog[open]').forEach((d) => d.close());
+  document.querySelectorAll('dialog[open]:not(.closing)').forEach((d) => d.close());
   const hash = location.hash || '#/';
   const [id, ...rest] = hash.replace(/^#\/?/, '').split('/').filter(Boolean).map((s) => {
     try { return decodeURIComponent(s); } catch { return s; }
   });
   const app = apps.find((a) => a.id === id);
-  const scroll = hash === lastHash ? window.scrollY : 0;
+  const same = hash === lastHash; // ridisegno della stessa pagina: niente animazione
+  const scroll = same ? window.scrollY : 0;
+  const depth = (id ? 1 : 0) + rest.length;
 
   const view = document.createElement('div');
   view.className = 'view';
+  if (!same) view.classList.add('enter', depth < lastDepth ? 'back' : 'fwd');
   main.replaceChildren(view);
 
   if (app) {
-    setAccent(app.color);
+    setAccent([app.color, app.color2]);
     const res = app.render(view, rest, ctx) || {};
     const title = res.title || app.name;
     setHeader(title, res.back ?? (rest.length ? `#/${app.id}` : '#/'));
@@ -54,8 +74,10 @@ function route() {
     setHeader('Hub', null);
     document.title = 'Hub';
   }
+  if (!same) stagger(view);
   window.scrollTo(0, scroll);
   lastHash = hash;
+  lastDepth = depth;
 }
 
 function saluto() {
@@ -66,10 +88,13 @@ function saluto() {
 function renderHub(root) {
   const oggi = new Date().toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
   root.innerHTML = `
-    <p class="hello">${saluto()} <span class="muted">· ${esc(oggi)}</span></p>
+    <div class="hello">
+      <h2><span>${saluto()}</span> 👋</h2>
+      <p class="muted">${esc(oggi)}</p>
+    </div>
     <div class="grid">
       ${apps.map((a) => `
-        <a class="tile" href="#/${a.id}" style="--tile:${a.color}">
+        <a class="tile" href="#/${a.id}" style="--tile:${a.color};--tile2:${a.color2 ?? a.color}">
           <span class="tile-icon" aria-hidden="true">${a.icon}</span>
           <span class="tile-name">${esc(a.name)}</span>
           <span class="tile-sub">${esc(a.summary?.() ?? a.description)}</span>

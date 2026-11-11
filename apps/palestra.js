@@ -28,6 +28,7 @@ export default {
   name: 'Palestra',
   icon: '🏋️',
   color: '#ea580c',
+  color2: '#e11d48',
   description: 'Schede e allenamenti',
   summary() {
     if (getBozza()) return 'Allenamento in corso';
@@ -236,17 +237,21 @@ function viewAllena(root, id, ctx) {
     return { title: 'Allenamento', back: '#/palestra' };
   }
 
-  const counts = () => {
+  const stats = () => {
     const tot = b.esercizi.reduce((a, e) => a + e.serie.length, 0);
     const done = b.esercizi.reduce((a, e) => a + e.serie.filter((x) => x.fatto).length, 0);
-    return `${done}/${tot}`;
+    return { tot, done, pct: tot ? Math.round((done / tot) * 100) : 0 };
   };
+  const counts = () => { const s = stats(); return `${s.done}/${s.tot}`; };
 
   root.innerHTML = `
-    <div class="card workout-head">
-      <div><div class="muted small">Iniziato</div><b>${fmtTime(b.inizio)}</b></div>
-      <div><div class="muted small">Durata</div><b id="elapsed">–</b></div>
-      <div><div class="muted small">Serie fatte</div><b id="done">${counts()}</b></div>
+    <div class="card">
+      <div class="workout-head">
+        <div><div class="muted small">Iniziato</div><b>${fmtTime(b.inizio)}</b></div>
+        <div><div class="muted small">Durata</div><b id="elapsed">–</b></div>
+        <div><div class="muted small">Serie fatte</div><b id="done">${counts()}</b></div>
+      </div>
+      <div class="progress" role="progressbar" aria-label="Serie completate" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${stats().pct}"><i id="bar"></i></div>
     </div>
     ${b.esercizi.map((e, i) => `
       <section class="card">
@@ -275,6 +280,14 @@ function viewAllena(root, id, ctx) {
       <button class="btn primary grow" data-act="save">Salva allenamento</button>
     </div>`;
 
+  const bar = root.querySelector('#bar');
+  const updateBar = () => {
+    const { pct } = stats();
+    bar.style.width = pct + '%';
+    bar.parentElement.setAttribute('aria-valuenow', pct);
+  };
+  requestAnimationFrame(() => requestAnimationFrame(updateBar)); // parte da 0 e si riempie
+
   const elapsed = root.querySelector('#elapsed');
   const tick = () => {
     if (!root.isConnected) return clearInterval(timer);
@@ -294,8 +307,11 @@ function viewAllena(root, id, ctx) {
       const x = b.esercizi[t.dataset.i].serie[t.dataset.k];
       if (f === 'fatto') {
         x.fatto = t.checked;
-        t.closest('.set').classList.toggle('done', t.checked);
+        const row = t.closest('.set');
+        row.classList.toggle('done', t.checked);
+        row.classList.toggle('pop', t.checked);
         root.querySelector('#done').textContent = counts();
+        updateBar();
       } else {
         x[f] = t.value === '' ? null : Number(t.value);
       }
@@ -410,9 +426,21 @@ function chart(points) {
     P + (i * (W - 2 * P)) / (points.length - 1),
     H - P - ((p.v - min) / span) * (H - 2 * P - 14),
   ]);
+  const line = xy.map((a) => a.join(',')).join(' ');
+  const area = `${P},${H - P} ${line} ${W - P},${H - P}`;
   return `<svg viewBox="0 0 ${W} ${H}" class="chart" role="img" aria-label="Andamento del carico massimo">
-    <polyline points="${xy.map((a) => a.join(',')).join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
-    ${xy.map(([x, y], i) => `<circle cx="${x}" cy="${y}" r="4" fill="var(--accent)"><title>${esc(points[i].label)}: ${fmtKg(points[i].v)} kg</title></circle>`).join('')}
+    <defs>
+      <linearGradient id="chart-fill" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="var(--accent)" stop-opacity=".35"/>
+        <stop offset="1" stop-color="var(--accent)" stop-opacity="0"/>
+      </linearGradient>
+      <linearGradient id="chart-line" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="${W}" y2="0">
+        <stop offset="0" stop-color="var(--accent)"/><stop offset="1" stop-color="var(--accent-2)"/>
+      </linearGradient>
+    </defs>
+    <polygon class="area" points="${area}" fill="url(#chart-fill)"/>
+    <polyline class="line" pathLength="1" points="${line}" fill="none" stroke="url(#chart-line)" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>
+    ${xy.map(([x, y], i) => `<circle cx="${x}" cy="${y}" r="4.5" fill="var(--surface)" stroke="var(--accent)" stroke-width="2.5" style="--i:${i}"><title>${esc(points[i].label)}: ${fmtKg(points[i].v)} kg</title></circle>`).join('')}
     <text x="${W - P}" y="12" text-anchor="end" class="axis">max ${fmtKg(max)} kg</text>
     <text x="${W - P}" y="${H - 2}" text-anchor="end" class="axis">min ${fmtKg(min)} kg</text>
   </svg>`;

@@ -35,7 +35,8 @@ export default {
   id: 'cibo',
   name: 'Cibo',
   icon: '🥗',
-  color: '#16a34a',
+  color: '#059669',
+  color2: '#0d9488',
   description: 'Piano alimentare settimanale',
   summary() {
     const day = getPiano()[oggi()];

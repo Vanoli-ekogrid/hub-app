@@ -1,6 +1,6 @@
 // Service worker: permette di usare l'app anche senza connessione.
 // Strategia "prima la rete": online prende sempre la versione aggiornata, offline usa la copia salvata.
-const CACHE = 'hub-v2';
+const CACHE = 'hub-v3';
 const FILES = [
   './', 'index.html', 'css/style.css', 'manifest.webmanifest',
   'js/app.js', 'js/core.js', 'js/apps.js',

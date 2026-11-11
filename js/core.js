@@ -101,9 +101,13 @@ export function formDialog({ title, fields, submit = 'Salva', danger = null }) {
     const finish = (out) => {
       if (done) return;
       done = true;
-      if (d.open) d.close();
-      d.remove();
       resolve(out);
+      if (!d.open || matchMedia('(prefers-reduced-motion: reduce)').matches) { d.close(); d.remove(); return; }
+      // Animazione di chiusura, poi rimuovi il pannello.
+      d.classList.add('closing');
+      const end = () => { if (d.open) d.close(); d.remove(); };
+      d.addEventListener('animationend', end, { once: true });
+      setTimeout(end, 300);
     };
     const form = d.querySelector('form');
     form.addEventListener('submit', (ev) => {
