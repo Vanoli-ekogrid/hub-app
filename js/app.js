@@ -26,7 +26,11 @@ function setHeader(title, back) {
   if (back) backEl.href = back;
 }
 
+const isNative = () => !!window.Capacitor?.isNativePlatform?.();
+
 function route() {
+  // Cambiando pagina (anche col tasto "indietro" di Android) chiudi i pannelli aperti.
+  document.querySelectorAll('dialog[open]').forEach((d) => d.close());
   const hash = location.hash || '#/';
   const [id, ...rest] = hash.replace(/^#\/?/, '').split('/').filter(Boolean).map((s) => {
     try { return decodeURIComponent(s); } catch { return s; }
@@ -80,11 +84,23 @@ function renderHub(root) {
       </div>
     </section>`;
 
-  root.querySelector('[data-act=export]').onclick = () => {
-    const blob = new Blob([JSON.stringify(exportAll(), null, 2)], { type: 'application/json' });
+  root.querySelector('[data-act=export]').onclick = async () => {
+    const json = JSON.stringify(exportAll(), null, 2);
+    const name = `hub-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    if (isNative()) {
+      // Nell'app Android: salva il file e apri "Condividi" (Drive, WhatsApp, email, File…).
+      try {
+        const { Filesystem, Share } = window.Capacitor.Plugins;
+        const { uri } = await Filesystem.writeFile({ path: name, data: json, directory: 'CACHE', encoding: 'utf8' });
+        await Share.share({ title: 'Backup Hub', files: [uri] });
+      } catch (e) {
+        if (!/cancel/i.test(e?.message || '')) toast('Esportazione non riuscita');
+      }
+      return;
+    }
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `hub-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+    a.download = name;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   };
@@ -107,6 +123,7 @@ function renderHub(root) {
 window.addEventListener('hashchange', route);
 route();
 
-if ('serviceWorker' in navigator) {
+// Il service worker serve solo alla versione web: nell'app Android i file sono già sul telefono.
+if ('serviceWorker' in navigator && !isNative()) {
   navigator.serviceWorker.register('sw.js').catch(() => { /* offline non disponibile */ });
 }

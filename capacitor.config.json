@@ -1,0 +1,14 @@
+{
+  "appId": "io.github.vanoliekogrid.hub",
+  "appName": "Hub",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#0f0f12"
+  },
+  "plugins": {
+    "SystemBars": {
+      "insetsHandling": "css",
+      "initialViewportFitValueHint": "cover"
+    }
+  }
+}

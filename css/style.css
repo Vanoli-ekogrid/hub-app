@@ -44,7 +44,7 @@ p { margin: 0; }
 .topbar {
   position: sticky; top: 0; z-index: 10;
   display: flex; align-items: center; gap: 6px;
-  padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+  padding: calc(10px + var(--safe-area-inset-top, env(safe-area-inset-top))) 16px 10px;
   background: color-mix(in srgb, var(--bg) 88%, transparent);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
@@ -54,7 +54,7 @@ p { margin: 0; }
 
 main {
   max-width: 640px; margin: 0 auto;
-  padding: 16px 16px calc(32px + env(safe-area-inset-bottom));
+  padding: 16px 16px calc(32px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom)));
 }
 .view > * + * { margin-top: 14px; }
 
@@ -201,7 +201,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 dialog.sheet {
   width: 100%; max-width: 640px; margin: auto auto 0;
   border: 0; border-radius: 20px 20px 0 0;
-  padding: 20px 16px calc(16px + env(safe-area-inset-bottom));
+  padding: 20px 16px calc(16px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom)));
   background: var(--surface); color: var(--text);
   max-height: 90vh;
 }
@@ -213,7 +213,7 @@ dialog.sheet .row { margin-top: 18px; }
 
 /* Notifica */
 #toast {
-  position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom));
+  position: fixed; left: 50%; bottom: calc(20px + var(--safe-area-inset-bottom, env(safe-area-inset-bottom)));
   transform: translate(-50%, 20px); opacity: 0; pointer-events: none;
   background: var(--text); color: var(--bg);
   padding: 10px 16px; border-radius: 12px; font-weight: 600; font-size: .92rem;
